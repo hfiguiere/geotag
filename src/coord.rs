@@ -1,30 +1,81 @@
 
 use std::path::Path;
+use std::str::FromStr;
 
 use tagger::Tagger;
 
-pub struct CoordTagger {
-    long: String,
-    lat: String,
+fn dd_to_dms(dd: f64, is_lat: bool) -> String {
+    let reference: char = if dd.is_sign_positive() {
+        if is_lat {
+            'N'
+        } else {
+            'E'
+        }
+    } else if is_lat {
+        'S'
+    } else {
+        'W'
+    };
+
+    let dd = dd.abs();
+    let d = dd.trunc() as i32;
+    let ms = dd.fract() * 60_f64;
+    let m = ms.trunc() as i32;
+    let s = (ms.fract() * 60_f64) as i32;
+
+    format!("{},{},{}{}", d, m, s, reference)
 }
 
+fn dd_to_dmfract(dd: f64, is_lat: bool) -> String {
+    let reference: char = if dd.is_sign_positive() {
+        if is_lat {
+            'N'
+        } else {
+            'E'
+        }
+    } else if is_lat {
+        'S'
+    } else {
+        'W'
+    };
+
+    let dd = dd.abs();
+    let d = dd.trunc() as i32;
+    let ms = dd.fract() * 60_f64;
+
+    format!("{},{:.6}{}", d, ms, reference)
+}
+
+pub struct CoordTagger {
+    lat: String,
+    long: String,
+}
 
 impl CoordTagger {
+    // assume the argument is dd,dd
+    // dd is decimal degrees, with sign.
     pub fn new(arg: &str) -> CoordTagger {
         // parse
 
         let v: Vec<&str> = arg.split(',').collect();
         if v.len() == 2 {
-            return CoordTagger{long: v[0].to_string(), lat: v[1].to_string()};
+            if let Ok(lat) = f64::from_str(v[0]) {
+                if let Ok(long) = f64::from_str(v[1]) {
+
+                    let lat = dd_to_dmfract(lat, true);
+                    let long = dd_to_dmfract(long, false);
+                    return CoordTagger{lat, long};
+                }
+            }
         }
-        CoordTagger{long: String::default(), lat: String::default()}
+        CoordTagger{lat: String::default(), long: String::default()}
     }
 }
 
 impl Tagger for CoordTagger {
 
     fn get_coord_for_file(&self, _file: &Path) -> (String, String) {
-        (self.long.clone(), self.lat.clone())
+        (self.lat.clone(), self.long.clone())
     }
 
     fn is_ok(&self) -> bool {
@@ -32,6 +83,15 @@ impl Tagger for CoordTagger {
     }
 }
 
+#[cfg(test)]
+#[test]
+fn test_dd_to_dms() {
+    assert_eq!(dd_to_dms(45.5135219, true), "45,30,48N");
+    assert_eq!(dd_to_dms(-73.5718842, false), "73,34,18W");
+
+    assert_eq!(dd_to_dmfract(45.520514, true), "45,31.230840N");
+    assert_eq!(dd_to_dmfract(-73.582707, false), "73,34.962420W");
+}
 
 #[cfg(test)]
 #[test]
@@ -39,7 +99,7 @@ fn test_parsing() {
     let coord = CoordTagger::new("12.34,-45.54");
 
     let coords = coord.get_coord_for_file(&Path::new(""));
-    assert_eq!(coords, ("12.34".to_owned(), "-45.54".to_owned()));
+    assert_eq!(coords, ("12,20.400000N".to_owned(), "45,32.400000W".to_owned()));
 
     // Invalid data
     let coord = CoordTagger::new("12.34/-45.54");
