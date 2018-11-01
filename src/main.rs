@@ -76,21 +76,11 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
             Xmp::new()
         };
         if !overwrite {
-            let mut props = exempi::PropFlags::empty();
-            let result = xmp.get_property(
-                "http://ns.adobe.com/exif/1.0/",
-                "GPSLatitude", &mut props);
-            if result.is_ok() {
+            if xmp.has_property("http://ns.adobe.com/exif/1.0/",
+                                "GPSLatitude") ||
+                xmp.has_property("http://ns.adobe.com/exif/1.0/",
+                                 "GPSLongitude") {
                 // already there, skip
-                // XXX allow overriding
-                return Ok(false);
-            }
-            let mut props = exempi::PropFlags::empty();
-            let result = xmp.get_property(
-                "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &mut props);
-            if result.is_ok() {
-                // already there, skip
-                // XXX allow overriding
                 return Ok(false);
             }
         }
@@ -102,9 +92,16 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
         xmp.set_property(
             "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &coords.1,
             exempi::PropFlags::empty())?;
+        xmp.set_property(
+            "http://ns.adobe.com/exif/1.0/", "GPSVersionID", "2.2.0.0",
+            exempi::PropFlags::empty())?;
+        xmp.set_property(
+            "http://ns.adobe.com/exif/1.0/", "GPSAltitude", "0/10000",
+            exempi::PropFlags::empty())?;
 
         let buf = xmp.serialize_and_format(
-            exempi::SerialFlags::empty(), 0, "\n", " ", 1)?;
+            exempi::SERIAL_OMITPACKETWRAPPER | exempi::SERIAL_USECOMPACTFORMAT,
+            0, "\n", " ", 1)?;
         let mut file = File::create(xmp_file)?;
         let written = file.write(buf.to_str().as_bytes())?;
         if written < buf.len() {
