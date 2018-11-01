@@ -66,16 +66,15 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
         let mut xmp_file = file.with_file_name(stem);
         xmp_file.set_extension("xmp");
 
-        let mut xmp;
-        if xmp_file.exists() {
+        let mut xmp = if xmp_file.exists() {
             let mut buf: Vec<u8> = vec![];
             let mut file = File::open(xmp_file.clone())?;
             let _r = file.read_to_end(&mut buf)?;
 
-            xmp = Xmp::from_buffer(&buf)?;
+            Xmp::from_buffer(&buf)?
         } else {
-            xmp = Xmp::new();
-        }
+            Xmp::new()
+        };
         if !overwrite {
             let mut props = exempi::PropFlags::empty();
             let result = xmp.get_property(
@@ -107,7 +106,11 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
         let buf = xmp.serialize_and_format(
             exempi::SerialFlags::empty(), 0, "\n", " ", 1)?;
         let mut file = File::create(xmp_file)?;
-        file.write(buf.to_str().as_bytes())?;
+        let written = file.write(buf.to_str().as_bytes())?;
+        if written < buf.len() {
+            println!("Short write: {} of {} bytes written.",
+                     written, buf.len());
+        }
     }
     Ok(true)
 }
@@ -129,6 +132,9 @@ fn main() {
         return;
     }
 
+    if !tagger.is_ok() {
+        return;
+    }
     //
     let current_dir = env::current_dir().ok().unwrap();
     for file in args.arg_files {

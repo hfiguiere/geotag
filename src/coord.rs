@@ -26,6 +26,10 @@ impl Tagger for CoordTagger {
     fn get_coord_for_file(&self, _file: &Path) -> (String, String) {
         (self.long.clone(), self.lat.clone())
     }
+
+    fn is_ok(&self) -> bool {
+        !self.long.is_empty() && !self.lat.is_empty()
+    }
 }
 
 

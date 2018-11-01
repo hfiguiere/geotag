@@ -19,4 +19,8 @@ impl Tagger for TracklogTagger {
     fn get_coord_for_file(&self, _file: &Path) -> (String, String) {
         (String::default(), String::default())
     }
+
+    fn is_ok(&self) -> bool {
+        false
+    }
 }
