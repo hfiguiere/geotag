@@ -22,11 +22,12 @@ use tracklog::TracklogTagger;
 
 const USAGE: &str = "
 Usage:
-  geotag [-t <tracklog> | -c <coords>] <files>...
+  geotag [-t <tracklog> | -c <coords>] [--overwrite] <files>...
 
 Options:
   -t <tracklog>  Use GPX tracklog.
   -c <coords>    GPS Coordinates to apply to all the files. x,y
+  --overwrite    Overwrite existing geotag
   <files>        Image(s) to geotag. Will locate the XMP side car.
 ";
 
@@ -34,6 +35,7 @@ Options:
 struct Args {
     flag_t: Option<String>,
     flag_c: Option<String>,
+    flag_overwrite: bool,
     arg_files: Vec<String>,
 }
 
@@ -58,7 +60,7 @@ impl From<exempi::Error> for GeoTagError {
 
 type Result<T> = std::result::Result<T, GeoTagError>;
 
-fn tag_file(tagger: &Tagger, file: &Path) -> Result<bool>
+fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
 {
     if let Some(stem) = file.file_stem() {
         let mut xmp_file = file.with_file_name(stem);
@@ -74,24 +76,25 @@ fn tag_file(tagger: &Tagger, file: &Path) -> Result<bool>
         } else {
             xmp = Xmp::new();
         }
-        let mut props = exempi::PropFlags::empty();
-        let result = xmp.get_property(
-            "http://ns.adobe.com/exif/1.0/",
-            "GPSLatitude", &mut props);
-        if result.is_ok() {
-            // already there, skip
-            // XXX allow overriding
-            return Ok(false);
+        if !overwrite {
+            let mut props = exempi::PropFlags::empty();
+            let result = xmp.get_property(
+                "http://ns.adobe.com/exif/1.0/",
+                "GPSLatitude", &mut props);
+            if result.is_ok() {
+                // already there, skip
+                // XXX allow overriding
+                return Ok(false);
+            }
+            let mut props = exempi::PropFlags::empty();
+            let result = xmp.get_property(
+                "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &mut props);
+            if result.is_ok() {
+                // already there, skip
+                // XXX allow overriding
+                return Ok(false);
+            }
         }
-        let mut props = exempi::PropFlags::empty();
-        let result = xmp.get_property(
-            "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &mut props);
-        if result.is_ok() {
-            // already there, skip
-            // XXX allow overriding
-            return Ok(false);
-        }
-
         let coords = tagger.get_coord_for_file(file);
 
         xmp.set_property(
@@ -133,7 +136,7 @@ fn main() {
         let mut path = current_dir.clone();
         path.push(file);
 
-        let r = tag_file(tagger.as_ref(), &path);
+        let r = tag_file(tagger.as_ref(), &path, args.flag_overwrite);
         println!("{:?}", r);
     }
 }
