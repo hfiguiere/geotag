@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use tagger::Tagger;
 
+#[cfg(test)]
 fn dd_to_dms(dd: f64, is_lat: bool) -> String {
     let reference: char = if dd.is_sign_positive() {
         if is_lat {
