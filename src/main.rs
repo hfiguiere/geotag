@@ -37,7 +37,28 @@ struct Args {
     arg_files: Vec<String>,
 }
 
-fn tag_file(tagger: &Tagger, file: &Path)
+#[derive(Debug)]
+enum GeoTagError {
+    XmpError(exempi::Error),
+    IoError(std::io::Error),
+}
+
+impl From<std::io::Error> for GeoTagError {
+    fn from(err: std::io::Error) -> Self {
+        GeoTagError::IoError(err)
+    }
+}
+
+impl From<exempi::Error> for GeoTagError {
+    fn from(err: exempi::Error) -> Self {
+        GeoTagError::XmpError(err)
+    }
+}
+
+
+type Result<T> = std::result::Result<T, GeoTagError>;
+
+fn tag_file(tagger: &Tagger, file: &Path) -> Result<bool>
 {
     if let Some(stem) = file.file_stem() {
         let mut xmp_file = file.with_file_name(stem);
@@ -46,10 +67,10 @@ fn tag_file(tagger: &Tagger, file: &Path)
         let mut xmp;
         if xmp_file.exists() {
             let mut buf: Vec<u8> = vec![];
-            if let Ok(mut file) = File::open(xmp_file.clone()) {
-                let r = file.read_to_end(&mut buf);
-            }
-            xmp = Xmp::from_buffer(&buf).unwrap();
+            let mut file = File::open(xmp_file.clone())?;
+            let _r = file.read_to_end(&mut buf)?;
+
+            xmp = Xmp::from_buffer(&buf)?;
         } else {
             xmp = Xmp::new();
         }
@@ -60,7 +81,7 @@ fn tag_file(tagger: &Tagger, file: &Path)
         if result.is_ok() {
             // already there, skip
             // XXX allow overriding
-            return;
+            return Ok(false);
         }
         let mut props = exempi::PropFlags::empty();
         let result = xmp.get_property(
@@ -68,26 +89,24 @@ fn tag_file(tagger: &Tagger, file: &Path)
         if result.is_ok() {
             // already there, skip
             // XXX allow overriding
-            return;
+            return Ok(false);
         }
 
         let coords = tagger.get_coord_for_file(file);
 
-        let result = xmp.set_property(
+        xmp.set_property(
             "http://ns.adobe.com/exif/1.0/", "GPSLatitude", &coords.0,
-            exempi::PropFlags::empty());
-        let result = xmp.set_property(
+            exempi::PropFlags::empty())?;
+        xmp.set_property(
             "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &coords.1,
-            exempi::PropFlags::empty());
+            exempi::PropFlags::empty())?;
 
-        let result = xmp.serialize_and_format(
-            exempi::SerialFlags::empty(), 0, "\n", " ", 1);
-        if let Ok(buf) = result {
-            if let Ok(mut file) = File::create(xmp_file) {
-                file.write(buf.to_str().as_bytes());
-            }
-        }
+        let buf = xmp.serialize_and_format(
+            exempi::SerialFlags::empty(), 0, "\n", " ", 1)?;
+        let mut file = File::create(xmp_file)?;
+        file.write(buf.to_str().as_bytes())?;
     }
+    Ok(true)
 }
 
 fn main() {
@@ -114,6 +133,7 @@ fn main() {
         let mut path = current_dir.clone();
         path.push(file);
 
-        tag_file(tagger.as_ref(), &path);
+        let r = tag_file(tagger.as_ref(), &path);
+        println!("{:?}", r);
     }
 }
