@@ -1,4 +1,3 @@
-
 use std::path::Path;
 use std::str::FromStr;
 
@@ -61,19 +60,20 @@ impl CoordTagger {
         if v.len() == 2 {
             if let Ok(lat) = f64::from_str(v[0]) {
                 if let Ok(long) = f64::from_str(v[1]) {
-
                     let lat = dd_to_dmfract(lat, true);
                     let long = dd_to_dmfract(long, false);
-                    return CoordTagger{lat, long};
+                    return CoordTagger { lat, long };
                 }
             }
         }
-        CoordTagger{lat: String::default(), long: String::default()}
+        CoordTagger {
+            lat: String::default(),
+            long: String::default(),
+        }
     }
 }
 
 impl Tagger for CoordTagger {
-
     fn get_coord_for_file(&self, _file: &Path) -> (String, String) {
         (self.lat.clone(), self.long.clone())
     }
@@ -99,7 +99,10 @@ fn test_parsing() {
     let coord = CoordTagger::new("12.34,-45.54");
 
     let coords = coord.get_coord_for_file(&Path::new(""));
-    assert_eq!(coords, ("12,20.400000N".to_owned(), "45,32.400000W".to_owned()));
+    assert_eq!(
+        coords,
+        ("12,20.400000N".to_owned(), "45,32.400000W".to_owned())
+    );
 
     // Invalid data
     let coord = CoordTagger::new("12.34/-45.54");

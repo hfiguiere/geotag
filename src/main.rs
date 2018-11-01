@@ -1,5 +1,5 @@
-extern crate exempi;
 extern crate docopt;
+extern crate exempi;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -9,8 +9,8 @@ mod tagger;
 mod tracklog;
 
 use std::env;
-use std::fs::{File};
-use std::io::{Read,Write};
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::Path;
 
 use exempi::Xmp;
@@ -57,11 +57,9 @@ impl From<exempi::Error> for GeoTagError {
     }
 }
 
-
 type Result<T> = std::result::Result<T, GeoTagError>;
 
-fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
-{
+fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool> {
     if let Some(stem) = file.file_stem() {
         let mut xmp_file = file.with_file_name(stem);
         xmp_file.set_extension("xmp");
@@ -76,10 +74,9 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
             Xmp::new()
         };
         if !overwrite {
-            if xmp.has_property("http://ns.adobe.com/exif/1.0/",
-                                "GPSLatitude") ||
-                xmp.has_property("http://ns.adobe.com/exif/1.0/",
-                                 "GPSLongitude") {
+            if xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLatitude")
+                || xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLongitude")
+            {
                 // already there, skip
                 return Ok(false);
             }
@@ -87,26 +84,41 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool>
         let coords = tagger.get_coord_for_file(file);
 
         xmp.set_property(
-            "http://ns.adobe.com/exif/1.0/", "GPSLatitude", &coords.0,
-            exempi::PropFlags::empty())?;
+            "http://ns.adobe.com/exif/1.0/",
+            "GPSLatitude",
+            &coords.0,
+            exempi::PropFlags::empty(),
+        )?;
         xmp.set_property(
-            "http://ns.adobe.com/exif/1.0/", "GPSLongitude", &coords.1,
-            exempi::PropFlags::empty())?;
+            "http://ns.adobe.com/exif/1.0/",
+            "GPSLongitude",
+            &coords.1,
+            exempi::PropFlags::empty(),
+        )?;
         xmp.set_property(
-            "http://ns.adobe.com/exif/1.0/", "GPSVersionID", "2.2.0.0",
-            exempi::PropFlags::empty())?;
+            "http://ns.adobe.com/exif/1.0/",
+            "GPSVersionID",
+            "2.2.0.0",
+            exempi::PropFlags::empty(),
+        )?;
         xmp.set_property(
-            "http://ns.adobe.com/exif/1.0/", "GPSAltitude", "0/10000",
-            exempi::PropFlags::empty())?;
+            "http://ns.adobe.com/exif/1.0/",
+            "GPSAltitude",
+            "0/10000",
+            exempi::PropFlags::empty(),
+        )?;
 
         let buf = xmp.serialize_and_format(
             exempi::SERIAL_OMITPACKETWRAPPER | exempi::SERIAL_USECOMPACTFORMAT,
-            0, "\n", " ", 1)?;
+            0,
+            "\n",
+            " ",
+            1,
+        )?;
         let mut file = File::create(xmp_file)?;
         let written = file.write(buf.to_str().as_bytes())?;
         if written < buf.len() {
-            println!("Short write: {} of {} bytes written.",
-                     written, buf.len());
+            println!("Short write: {} of {} bytes written.", written, buf.len());
         }
     }
     Ok(true)
@@ -135,7 +147,6 @@ fn main() {
     //
     let current_dir = env::current_dir().ok().unwrap();
     for file in args.arg_files {
-
         let mut path = current_dir.clone();
         path.push(file);
 
