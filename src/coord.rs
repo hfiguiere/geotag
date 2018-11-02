@@ -46,6 +46,7 @@ fn dd_to_dmfract(dd: f64, is_lat: bool) -> String {
     format!("{},{:.6}{}", d, ms, reference)
 }
 
+#[derive(Default)]
 pub struct CoordTagger {
     lat: String,
     long: String,
@@ -60,17 +61,20 @@ impl CoordTagger {
         let v: Vec<&str> = arg.split(',').collect();
         if v.len() == 2 {
             if let Ok(lat) = f64::from_str(v[0]) {
+                if lat.abs() > 90_f64 {
+                    return CoordTagger::default();
+                }
                 if let Ok(long) = f64::from_str(v[1]) {
+                    if long.abs() >= 180_f64 {
+                        return CoordTagger::default();
+                    }
                     let lat = dd_to_dmfract(lat, true);
                     let long = dd_to_dmfract(long, false);
                     return CoordTagger { lat, long };
                 }
             }
         }
-        CoordTagger {
-            lat: String::default(),
-            long: String::default(),
-        }
+        CoordTagger::default()
     }
 }
 
@@ -97,7 +101,10 @@ fn test_dd_to_dms() {
 #[cfg(test)]
 #[test]
 fn test_parsing() {
+    let coord = CoordTagger::new("101.23,-223.10");
+    assert!(!coord.is_ok());
     let coord = CoordTagger::new("12.34,-45.54");
+    assert!(coord.is_ok());
 
     let coords = coord.get_coord_for_file(&Path::new(""));
     assert_eq!(
@@ -107,6 +114,7 @@ fn test_parsing() {
 
     // Invalid data
     let coord = CoordTagger::new("12.34/-45.54");
+    assert!(!coord.is_ok());
 
     let coords = coord.get_coord_for_file(&Path::new(""));
     assert_eq!(coords, (String::default(), String::default()));
