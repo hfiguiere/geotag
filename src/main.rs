@@ -73,13 +73,12 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool> {
         } else {
             Xmp::new()
         };
-        if !overwrite {
-            if xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLatitude")
-                || xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLongitude")
-            {
-                // already there, skip
-                return Ok(false);
-            }
+        if !overwrite
+            && (xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLatitude")
+                || xmp.has_property("http://ns.adobe.com/exif/1.0/", "GPSLongitude"))
+        {
+            // already there, skip
+            return Ok(false);
         }
         let coords = tagger.get_coord_for_file(file);
 
