@@ -9,3 +9,10 @@ exempi = { version = "2.5.0", git = "https://github.com/hfiguiere/exempi-rs.git"
 gpx = "0.6.0"
 serde = "1.0.15"
 serde_derive = "1.0"  # if you're using `derive(Deserialize)`
+
+
+[lib]
+name = "geotag"
+
+[[bin]]
+name = "geotag"

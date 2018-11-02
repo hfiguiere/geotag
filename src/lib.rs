@@ -1,46 +1,28 @@
-extern crate docopt;
+/*
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 extern crate exempi;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 
 mod coord;
 mod tagger;
 mod tracklog;
 
-use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
 use exempi::Xmp;
 
-use coord::CoordTagger;
-use docopt::Docopt;
-use tagger::Tagger;
-use tracklog::TracklogTagger;
+pub use coord::CoordTagger;
+pub use tagger::Tagger;
+pub use tracklog::TracklogTagger;
 
-const USAGE: &str = "
-Usage:
-  geotag [-t <tracklog> | -c <coords>] [--overwrite] <files>...
-
-Options:
-  -t <tracklog>  Use GPX tracklog.
-  -c <coords>    GPS Coordinates to apply to all the files. x,y
-  --overwrite    Overwrite existing geotag
-  <files>        Image(s) to geotag. Will locate the XMP side car.
-";
-
-#[derive(Debug, Deserialize)]
-struct Args {
-    flag_t: Option<String>,
-    flag_c: Option<String>,
-    flag_overwrite: bool,
-    arg_files: Vec<String>,
-}
-
+/// Geotag error: either IO or XMP.
 #[derive(Debug)]
-enum GeoTagError {
+pub enum GeoTagError {
     XmpError(exempi::Error),
     IoError(std::io::Error),
 }
@@ -59,7 +41,13 @@ impl From<exempi::Error> for GeoTagError {
 
 type Result<T> = std::result::Result<T, GeoTagError>;
 
-fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool> {
+/// Tag a file using tagger.
+///
+/// Return a result with bool value indicating if the file was
+/// tagged or not. A false value indicate the geotag wasn't overwritten.
+pub fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool> {
+    exempi::init();
+
     if let Some(stem) = file.file_stem() {
         let mut xmp_file = file.with_file_name(stem);
         xmp_file.set_extension("xmp");
@@ -121,35 +109,4 @@ fn tag_file(tagger: &Tagger, file: &Path, overwrite: bool) -> Result<bool> {
         }
     }
     Ok(true)
-}
-
-fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.argv(std::env::args()).deserialize())
-        .unwrap_or_else(|e| e.exit());
-
-    exempi::init();
-
-    let tagger: Box<Tagger>;
-    if let Some(tracklog) = args.flag_t {
-        tagger = Box::new(TracklogTagger::new(&tracklog));
-    } else if let Some(coord) = args.flag_c {
-        tagger = Box::new(CoordTagger::new(&coord));
-    } else {
-        // ERROR
-        return;
-    }
-
-    if !tagger.is_ok() {
-        return;
-    }
-    //
-    let current_dir = env::current_dir().ok().unwrap();
-    for file in args.arg_files {
-        let mut path = current_dir.clone();
-        path.push(file);
-
-        let r = tag_file(tagger.as_ref(), &path, args.flag_overwrite);
-        println!("{:?}", r);
-    }
 }
