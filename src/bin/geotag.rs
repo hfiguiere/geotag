@@ -17,13 +17,16 @@ use geotag::{tag_file, CoordTagger, Tagger, TracklogTagger};
 
 const USAGE: &str = "
 Usage:
-  geotag [-t <tracklog> | -c <coords>] [--overwrite] <files>...
+  geotag [-t <tracklog> | -c <coords>] [--tz=<timezone>] [--overwrite] <files>...
+  geotag --help | -h
 
 Options:
-  -t <tracklog>  Use GPX tracklog.
-  -c <coords>    GPS Coordinates to apply to all the files. x,y
-  --overwrite    Overwrite existing geotag
-  <files>        Image(s) to geotag. Will locate the XMP side car.
+  -h --help       Show help.
+  -t <tracklog>   Use GPX tracklog.
+  -c <coords>     GPS Coordinates to apply to all the files. x,y.
+  --tz=<tz>       Specify the timezone of the source images.
+  --overwrite     Overwrite existing geotag.
+  <files>         Image(s) to geotag. Will locate the XMP side car.
 ";
 
 #[derive(Debug, Deserialize)]
@@ -31,6 +34,7 @@ struct Args {
     flag_t: Option<String>,
     flag_c: Option<String>,
     flag_overwrite: bool,
+    flag_tz: Option<String>,
     arg_files: Vec<String>,
 }
 
